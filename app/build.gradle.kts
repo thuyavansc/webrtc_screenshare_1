@@ -45,9 +45,9 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 
-    implementation("com.google.code.gson:gson:2.10.1") // Gson for JSON parsing
-    implementation("com.mesibo.api:webrtc:1.0.5") // WebRTC dependency
-    implementation("com.google.dagger:hilt-android:2.44") // Hilt dependency
-    annotationProcessor("com.google.dagger:hilt-compiler:2.44") // Hilt compiler for Java
-    implementation("org.java-websocket:Java-WebSocket:1.5.3") // WebSocket library
+    implementation(libs.gson) // Gson for JSON parsing
+    implementation(libs.webrtc) // WebRTC dependency
+    implementation(libs.hilt.android) // Hilt dependency
+    annotationProcessor(libs.hilt.compiler) // Hilt compiler for Java
+    implementation(libs.java.websocket) // WebSocket library
 }

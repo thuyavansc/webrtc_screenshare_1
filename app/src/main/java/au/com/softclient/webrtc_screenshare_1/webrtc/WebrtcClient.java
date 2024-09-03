@@ -26,6 +26,7 @@ import org.webrtc.SessionDescription;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.SurfaceViewRenderer;
 import org.webrtc.VideoCapturer;
+import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
 
 import javax.inject.Inject;
@@ -52,6 +53,11 @@ public class WebrtcClient {
     private final String localTrackId = "local_track";
     private final String localStreamId = "local_stream";
     private MediaStream localStream;
+
+    private int screenWidth;
+    private int screenHeight;
+    private int frameRate = 30; // Set a default frame rate, e.g., 30 frames per second
+
 
     @Inject
     public WebrtcClient(Context context, Gson gson) {
@@ -92,29 +98,61 @@ public class WebrtcClient {
         view.init(eglBaseContext, null);
     }
 
-    public void startScreenCapturing(SurfaceViewRenderer view) {
+//    public void startScreenCapturing0(SurfaceViewRenderer view) {
+//        DisplayMetrics displayMetrics = new DisplayMetrics();
+//        WindowManager windowsManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+//        if (windowsManager != null) {
+//            windowsManager.getDefaultDisplay().getMetrics(displayMetrics);
+//        }
+//
+//        int screenWidthPixels = displayMetrics.widthPixels;
+//        int screenHeightPixels = displayMetrics.heightPixels;
+//
+//        SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create(Thread.currentThread().getName(), eglBaseContext);
+//
+//        screenCapturer = createScreenCapturer();
+//        if (screenCapturer != null) {
+//            screenCapturer.initialize(surfaceTextureHelper, context, peerConnectionFactory.createVideoSource(false).getCapturerObserver());
+//            screenCapturer.startCapture(screenWidthPixels, screenHeightPixels, 15);
+//
+//            localVideoTrack.addSink(view);
+//            localStream = peerConnectionFactory.createLocalMediaStream(localStreamId);
+//            localStream.addTrack(localVideoTrack);
+//            peerConnection.addStream(localStream);
+//        }
+//    }
+
+    private void initializeScreenDimensions() {
         DisplayMetrics displayMetrics = new DisplayMetrics();
-        WindowManager windowsManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-        if (windowsManager != null) {
-            windowsManager.getDefaultDisplay().getMetrics(displayMetrics);
-        }
-
-        int screenWidthPixels = displayMetrics.widthPixels;
-        int screenHeightPixels = displayMetrics.heightPixels;
-
-        SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create(Thread.currentThread().getName(), eglBaseContext);
-
-        screenCapturer = createScreenCapturer();
-        if (screenCapturer != null) {
-            screenCapturer.initialize(surfaceTextureHelper, context, peerConnectionFactory.createVideoSource(false).getCapturerObserver());
-            screenCapturer.startCapture(screenWidthPixels, screenHeightPixels, 15);
-
-            localVideoTrack.addSink(view);
-            localStream = peerConnectionFactory.createLocalMediaStream(localStreamId);
-            localStream.addTrack(localVideoTrack);
-            peerConnection.addStream(localStream);
-        }
+        WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        windowManager.getDefaultDisplay().getMetrics(displayMetrics);
+        screenWidth = displayMetrics.widthPixels;
+        screenHeight = displayMetrics.heightPixels;
     }
+
+
+    public void startScreenCapturing(SurfaceViewRenderer surfaceView) {
+        initializeScreenDimensions(); // Initialize screen dimensions
+
+        VideoCapturer videoCapturer = createScreenCapturer();
+        VideoSource videoSource = peerConnectionFactory.createVideoSource(false);
+
+        SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBaseContext);
+        videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
+        videoCapturer.startCapture(screenWidth, screenHeight, frameRate);
+
+        VideoTrack videoTrack = peerConnectionFactory.createVideoTrack("videoTrack", videoSource);
+        MediaStream mediaStream = peerConnectionFactory.createLocalMediaStream("localStream");
+        mediaStream.addTrack(videoTrack);
+
+        if (peerConnection != null) {
+            peerConnection.addStream(mediaStream);
+        }
+
+        videoTrack.addSink(surfaceView);
+    }
+
+
 
     private VideoCapturer createScreenCapturer() {
         return new ScreenCapturerAndroid(permissionIntent, new MediaProjection.Callback() {
